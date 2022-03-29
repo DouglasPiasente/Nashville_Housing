@@ -75,6 +75,92 @@ Add PropertySplitCity NVARCHAR(255);
 Update NashvilleHousing
 SET PropertySplitCity = SUBSTRING(PropertyAddress, CHARINDEX(',',PropertyAddress)+1, LEN(PropertyAddress))
 
---Select *
---From Housing.dbo.NashvilleHousing
+Select *
+From Housing.dbo.NashvilleHousing
+
+-------------------------------------------------------------------------------------------------
+
+-- Cleaning OwnerAddress Data with PARSENAME
+
+Select
+PARSENAME(REPLACE(OwnerAddress,',','.'),3) as Address,
+PARSENAME(REPLACE(OwnerAddress,',','.'),2) as City,
+PARSENAME(REPLACE(OwnerAddress,',','.'),1) as State
+FROM Housing.dbo.NashvilleHousing
+
+
+ALTER TABLE Housing.dbo.NashvilleHousing
+Add OwnerSplitAddress NVARCHAR(255);
+
+Update Housing.dbo.NashvilleHousing
+SET OwnerSplitAddress = PARSENAME(REPLACE(OwnerAddress,',','.'),3)
+
+ALTER TABLE Housing.dbo.NashvilleHousing
+Add OwnerSplitCity NVARCHAR(255);
+
+Update Housing.dbo.NashvilleHousing
+SET OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress,',','.'),2)
+
+ALTER TABLE Housing.dbo.NashvilleHousing
+Add OwnerSplitState NVARCHAR(255);
+
+Update Housing.dbo.NashvilleHousing
+SET OwnerSplitState = PARSENAME(REPLACE(OwnerAddress,',','.'),1)
+
+------------------------------------------------------------------------------------------------------
+
+-- Change Y and N to Yes and No in "Sold as Vacant" field
+
+Select Distinct(SoldAsVacant), Count(SoldAsVacant)
+From  Housing.dbo.NashvilleHousing
+Group By SoldAsVacant
+Order By 2
+
+Select SoldAsVacant
+, CASE When SoldAsVacant = 'Y' Then 'Yes'
+		When SoldAsVacant = 'N' Then 'No'
+		Else SoldAsVacant
+		END
+From Housing.dbo.NashvilleHousing
+
+Update  Housing.dbo.NashvilleHousing
+Set SoldAsVacant = CASE When SoldAsVacant = 'Y' Then 'Yes'
+		When SoldAsVacant = 'N' Then 'No'
+		Else SoldAsVacant
+		END
+
+
+---------------------------------------------------------------------------------
+
+-- Remove Duplicates
+
+
+WITH row_num as (
+Select *,
+	ROW_NUMBER() Over(
+	Partition By ParcelID,
+				 PropertyAddress,
+				 SalePrice,
+				 SaleDate,
+				 LegalReference
+				 ORDER BY
+					UniqueID
+					) row_num
+
+From  Housing.dbo.NashvilleHousing
+)
+--DELETE
+Select *
+From row_num
+where row_num > 1
+
+--------------------------------------------------------------------------
+
+--Delete Unused Columns
+
+ALTER Table Housing.dbo.NashvilleHousing
+Drop Column OwnerAddress, TaxDistrict, PropertyAddress
+
+Select *
+From Housing.dbo.NashvilleHousing
 
